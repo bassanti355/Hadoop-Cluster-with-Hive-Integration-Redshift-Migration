@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<configuration>
+  <property>
+    <name>tez.lib.uris</name>
+    <value>hdfs://mycluster/apps/tez/tez.tar.gz</value>
+    <description>
+      HDFS path to Tez libraries. Make sure you uploaded Tez jars there.
+    </description>
+  </property>
+
+  <property>
+    <name>tez.use.cluster.hadoop-libs</name>
+    <value>true</value>
+    <description>Use Hadoop libs already installed on the cluster</description>
+  </property>
+  </configuration>
+
+

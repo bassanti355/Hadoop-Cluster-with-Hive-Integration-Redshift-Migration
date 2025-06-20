@@ -1,0 +1,58 @@
+FROM hadoop_cluster4:latest
+
+
+USER root
+
+#Environment variables
+ENV HIVE_HOME=/usr/local/hive \
+    TEZ_HOME=/usr/local/tez \
+    PATH=$PATH:/usr/local/hive/bin:/usr/local/tez/bin \
+    HIVE_CONF_DIR=/usr/local/hive/conf \
+    HADOOP_CLASSPATH=/usr/local/hadoop/etc/hadoop:/usr/local/hive/lib/*:/usr/local/tez/lib/*:/usr/local/tez/*
+
+
+# install hive 
+ADD https://dlcdn.apache.org/hive/hive-4.0.1/apache-hive-4.0.1-bin.tar.gz /tmp/
+RUN tar -xvf /tmp/apache-hive-4.0.1-bin.tar.gz -C /usr/local/ && \
+    mv /usr/local/apache-hive-4.0.1-bin /usr/local/hive && \
+    rm -f /tmp/apache-hive-4.0.1-bin.tar.gz && \
+    chown -R hadoop:hadoop /usr/local/hive && \
+    chmod -R 777 /usr/local/hive
+
+
+
+
+#install postgresql driver
+ADD --chown=hadoop:hadoop --chmod=777 https://jdbc.postgresql.org/download/postgresql-42.6.0.jar  /usr/local/hive/lib/
+
+# install tez 
+ADD https://archive.apache.org/dist/tez/0.10.4/apache-tez-0.10.4-bin.tar.gz /tmp
+RUN tar -xvf /tmp/apache-tez-0.10.4-bin.tar.gz -C /usr/local/ && \
+    mv /usr/local/apache-tez-0.10.4-bin /usr/local/tez && \
+    rm -f /tmp/apache-tez-0.10.4-bin.tar.gz && \
+    chown -R hadoop:hadoop /usr/local/tez && \
+    chmod -R 777 /usr/local/tez
+
+#copy tez_site.xml
+COPY tez-site.xml /usr/local/tez/conf/tez-site.xml
+RUN chown hadoop:hadoop /usr/local/tez/conf/tez-site.xml && \
+   chmod 777 /usr/local/tez/conf/tez-site.xml
+   
+COPY hive-site.xml /usr/local/hive/conf/hive-site.xml
+RUN chown hadoop:hadoop /usr/local/hive/conf/hive-site.xml && \
+   chmod 777 /usr/local/hive/conf/hive-site.xml
+
+
+
+COPY init_hive.sh /usr/local/hive/init_hive.sh
+RUN chown hadoop:hadoop /usr/local/hive/init_hive.sh && \
+  chmod 777 /usr/local/hive/init_hive.sh
+
+
+RUN apt-get update && apt-get install -y postgresql-client
+
+USER hadoop
+
+
+ENTRYPOINT ["/usr/local/hive/init_hive.sh"]
+

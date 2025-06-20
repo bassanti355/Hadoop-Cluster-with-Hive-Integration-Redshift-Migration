@@ -1,0 +1,142 @@
+#version: '3.8'
+
+services:
+    master1:
+        image: hadoop_cluster4:latest
+        container_name: master1
+        hostname: hadoopmaster
+        ports:
+            - "9871:9870"  # NameNode Web UI
+            - "8188:8088"  # ResourceManager Web UI
+        networks:
+            - hadoop-net
+        environment:
+            - ZK_ID=1
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://hadoopmaster:9870"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+        command: tail -f /dev/null
+
+
+
+
+    master2:
+        image: hadoop_cluster4:latest
+        container_name: master2
+        hostname: hadoopmaster1
+        ports:
+            - "9872:9870"
+            - "8288:8088"
+        networks:
+            - hadoop-net
+       
+        environment:
+            - ZK_ID=2
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://hadoopmaster1:9870"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+        command: tail -f /dev/null
+
+
+
+
+    master3:
+        image: hadoop_cluster4:latest
+        container_name: master3
+        hostname: hadoopmaster2
+        ports:
+            - "9873:9870"
+            - "8388:8088"
+        networks:
+            - hadoop-net
+      
+        environment:
+            - ZK_ID=3
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://hadoopmaster2:9870"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+        command: tail -f /dev/null
+        
+
+    slave1:
+        image: hadoop_cluster4:latest
+        container_name: slave1
+        hostname: hadoopslave
+        networks:
+            - hadoop-net
+   
+        depends_on:
+            - master1
+        command: tail -f /dev/null
+
+
+
+
+    postgres:
+        image: postgres:13
+        container_name: postgres-metastore
+        hostname: postgres-metastore
+        networks:
+            - hadoop-net
+        environment:
+            - POSTGRES_USER=hive
+            - POSTGRES_PASSWORD=hive
+            - POSTGRES_DB=metastore
+        volumes:
+            - pg_data:/var/lib/postgresql/data
+        ports:
+            - "5432:5432"
+        restart: always
+        healthcheck:
+            test: ["CMD", "pg_isready", "-U", "hive", "-d", "metastore"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+
+
+    
+    hive-metastore:
+        build:
+            context: .
+            dockerfile: Dockerfile.hive
+        container_name: hive-metastore
+        hostname: hive-metastore
+        networks:
+            - hadoop-net
+        environment:
+            - SERVICE_TYPE=metastore
+            - DB_HOST=postgres-metastore
+        ports:
+            - "9084:9083"
+        depends_on:
+            postgres:
+                condition: service_healthy
+
+    hive-server2:
+        build:
+            context: .
+            dockerfile: Dockerfile.hive
+        container_name: hive-server2
+        hostname: hive-server2
+        depends_on:
+            - hive-metastore
+        networks:
+            - hadoop-net
+        environment:
+            - SERVICE_TYPE=hiveserver2
+            - METASTORE_HOST=hive-metastore
+        ports:
+            - "10000:10000"
+
+networks:
+    hadoop-net:
+        driver: bridge
+
+volumes:
+    pg_data:
